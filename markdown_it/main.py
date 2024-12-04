@@ -4,15 +4,15 @@ from collections.abc import Callable, Generator, Iterable, Mapping, MutableMappi
 from contextlib import contextmanager
 from typing import Any, Literal, overload
 
-from . import helpers, presets
-from .common import normalize_url, utils
+from . import presets
+from .common import normalize_url
 from .parser_block import ParserBlock
 from .parser_core import ParserCore
 from .parser_inline import ParserInline
-from .renderer import RendererHTML, RendererProtocol
+from .renderer import ExtendableRenderer, RendererHTML, RendererProtocol
 from .rules_core.state_core import StateCore
 from .token import Token
-from .utils import EnvType, OptionsDict, OptionsType, PresetType
+from .utils import EnvType, OptionsType, PresetType
 
 try:
     import linkify_it
@@ -20,12 +20,12 @@ except ModuleNotFoundError:
     linkify_it = None
 
 
-_PRESETS: dict[str, PresetType] = {
-    "default": presets.default.make(),
-    "js-default": presets.js_default.make(),
-    "zero": presets.zero.make(),
-    "commonmark": presets.commonmark.make(),
-    "gfm-like": presets.gfm_like.make(),
+_PRESETS: dict[str, Callable[[], PresetType]] = {
+    "default": presets.default.make,
+    "js-default": presets.js_default.make,
+    "zero": presets.zero.make,
+    "commonmark": presets.commonmark.make,
+    "gfm-like": presets.gfm_like.make,
 }
 
 
@@ -45,8 +45,8 @@ class MarkdownIt:
             ``self.renderer = renderer_cls(self)
         """
         # add modules
-        self.utils = utils
-        self.helpers = helpers
+        # self.utils = utils  # mypyc hates adding modules as attributes
+        # self.helpers = helpers  # mypyc hates adding modules as attributes
 
         # initialise classes
         self.inline = ParserInline()
@@ -63,9 +63,6 @@ class MarkdownIt:
                 "\n(Perhaps you intended this to be the renderer_cls?)"
             )
         self.configure(config, options_update=options_update)
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__module__}.{self.__class__.__name__}()"
 
     @overload
     def __getitem__(self, name: Literal["inline"]) -> ParserInline: ...
@@ -98,7 +95,7 @@ class MarkdownIt:
         `markdown-it` instance options on the fly. If you need multiple configurations
         it's best to create multiple instances and initialize each with separate config.
         """
-        self.options = OptionsDict(options)
+        self.options = options
 
     def configure(
         self, presets: str | PresetType, options_update: Mapping[str, Any] | None = None
@@ -114,7 +111,7 @@ class MarkdownIt:
         if isinstance(presets, str):
             if presets not in _PRESETS:
                 raise KeyError(f"Wrong `markdown-it` preset '{presets}', check name")
-            config = _PRESETS[presets]
+            config = _PRESETS[presets]()
         else:
             config = presets
 
@@ -228,8 +225,11 @@ class MarkdownIt:
 
         Only applied when ``renderer.__output__ == fmt``
         """
-        if self.renderer.__output__ == fmt:
-            self.renderer.rules[name] = function.__get__(self.renderer)  # type: ignore
+        if (
+            isinstance(self.renderer, ExtendableRenderer)
+            and self.renderer.__output__ == fmt
+        ):
+            self.renderer.rules[name] = function
 
     def use(
         self, plugin: Callable[..., None], *params: Any, **options: Any

@@ -1,5 +1,7 @@
 import logging
 
+from markdown_it import helpers
+
 from ..common.utils import charCodeAt, isSpace, normalizeReference
 from .state_block import StateBlock
 
@@ -106,7 +108,7 @@ def reference(state: StateBlock, startLine: int, _endLine: int, silent: bool) ->
 
     # [label]:   destination   'title'
     #            ^^^^^^^^^^^ parse this
-    res = state.md.helpers.parseLinkDestination(string, pos, maximum)
+    res = helpers.parseLinkDestination(string, pos, maximum)
     if not res.ok:
         return False
 
@@ -136,7 +138,7 @@ def reference(state: StateBlock, startLine: int, _endLine: int, silent: bool) ->
 
     # [label]:   destination   'title'
     #                          ^^^^^^^ parse this
-    res = state.md.helpers.parseLinkTitle(string, pos, maximum)
+    res = helpers.parseLinkTitle(string, pos, maximum)
     if pos < maximum and start != pos and res.ok:
         title = res.str
         pos = res.pos

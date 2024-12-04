@@ -36,7 +36,7 @@ _rules: list[tuple[str, RuleFuncCoreType]] = [
 
 class ParserCore:
     def __init__(self) -> None:
-        self.ruler = Ruler[RuleFuncCoreType]()
+        self.ruler = Ruler()
         for name, rule in _rules:
             self.ruler.push(name, rule)
 

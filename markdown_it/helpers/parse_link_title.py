@@ -1,25 +1,13 @@
 """Parse link title"""
 
 from ..common.utils import charCodeAt, unescapeAll
+from ._types import ParseResult
 
 
-class _Result:
-    __slots__ = ("lines", "ok", "pos", "str")
-
-    def __init__(self) -> None:
-        self.ok = False
-        self.pos = 0
-        self.lines = 0
-        self.str = ""
-
-    def __str__(self) -> str:
-        return self.str
-
-
-def parseLinkTitle(string: str, start: int, maximum: int) -> _Result:
+def parseLinkTitle(string: str, start: int, maximum: int) -> ParseResult:
     lines = 0
     pos = start
-    result = _Result()
+    result = ParseResult()
 
     if pos >= maximum:
         return result

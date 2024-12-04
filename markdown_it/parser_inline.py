@@ -53,11 +53,11 @@ _rules2: list[tuple[str, RuleFuncInline2Type]] = [
 
 class ParserInline:
     def __init__(self) -> None:
-        self.ruler = Ruler[RuleFuncInlineType]()
+        self.ruler = Ruler()
         for name, rule in _rules:
             self.ruler.push(name, rule)
         # Second ruler used for post-processing (e.g. in emphasis-like rules)
-        self.ruler2 = Ruler[RuleFuncInline2Type]()
+        self.ruler2 = Ruler()
         for name, rule2 in _rules2:
             self.ruler2.push(name, rule2)
 

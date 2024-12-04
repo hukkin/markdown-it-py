@@ -8,18 +8,6 @@ import warnings
 from markdown_it._compat import DATACLASS_KWARGS
 
 
-def convert_attrs(value: Any) -> Any:
-    """Convert Token.attrs set as ``None`` or ``[[key, value], ...]`` to a dict.
-
-    This improves compatibility with upstream markdown-it.
-    """
-    if not value:
-        return {}
-    if isinstance(value, list):
-        return dict(value)
-    return value
-
-
 @dc.dataclass(**DATACLASS_KWARGS)
 class Token:
     type: str
@@ -75,9 +63,6 @@ class Token:
     """If true, ignore this element when rendering.
     Used for tight lists to hide paragraphs.
     """
-
-    def __post_init__(self) -> None:
-        self.attrs = convert_attrs(self.attrs)
 
     def attrIndex(self, name: str) -> int:
         warnings.warn(  # noqa: B028
@@ -174,7 +159,11 @@ class Token:
     @classmethod
     def from_dict(cls, dct: MutableMapping[str, Any]) -> Token:
         """Convert a dict to a Token."""
-        token = cls(**dct)
-        if token.children:
-            token.children = [cls.from_dict(c) for c in token.children]  # type: ignore[arg-type]
+        dct_copy = dict(dct)
+        if dct_copy["attrs"] is None:
+            dct_copy["attrs"] = {}
+        children = dct_copy.pop("children")
+        token = cls(**dct_copy)
+        if children:
+            token.children = [cls.from_dict(c) for c in children]
         return token

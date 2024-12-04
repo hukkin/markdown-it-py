@@ -18,12 +18,9 @@ rules control use [[MarkdownIt.disable]], [[MarkdownIt.enable]] and
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any, TypedDict
 import warnings
-
-from markdown_it._compat import DATACLASS_KWARGS
 
 from .utils import EnvType
 
@@ -62,22 +59,22 @@ class RuleOptionsType(TypedDict, total=False):
     alt: list[str]
 
 
-RuleFuncTv = TypeVar("RuleFuncTv")
+RuleFuncTv = Callable[..., Any]
 """A rule function, whose signature is dependent on the state type."""
 
 
-@dataclass(**DATACLASS_KWARGS)
-class Rule(Generic[RuleFuncTv]):
-    name: str
-    enabled: bool
-    fn: RuleFuncTv = field(repr=False)
-    alt: list[str]
+class Rule:
+    def __init__(self, name: str, enabled: bool, fn: RuleFuncTv, alt: list[str]):
+        self.name = name
+        self.enabled = enabled
+        self.fn = fn
+        self.alt = alt
 
 
-class Ruler(Generic[RuleFuncTv]):
+class Ruler:
     def __init__(self) -> None:
         # List of added rules.
-        self.__rules__: list[Rule[RuleFuncTv]] = []
+        self.__rules__: list[Rule] = []
         # Cached rule chains.
         # First level - chain name, '' for default.
         # Second level - diginal anchor for fast filtering by charcodes.
@@ -146,9 +143,7 @@ class Ruler(Generic[RuleFuncTv]):
         options = options or {}
         if index == -1:
             raise KeyError(f"Parser rule not found: {beforeName}")
-        self.__rules__.insert(
-            index, Rule[RuleFuncTv](ruleName, True, fn, options.get("alt", []))
-        )
+        self.__rules__.insert(index, Rule(ruleName, True, fn, options.get("alt", [])))
         self.__cache__ = None
 
     def after(
@@ -171,7 +166,7 @@ class Ruler(Generic[RuleFuncTv]):
         if index == -1:
             raise KeyError(f"Parser rule not found: {afterName}")
         self.__rules__.insert(
-            index + 1, Rule[RuleFuncTv](ruleName, True, fn, options.get("alt", []))
+            index + 1, Rule(ruleName, True, fn, options.get("alt", []))
         )
         self.__cache__ = None
 
@@ -185,9 +180,7 @@ class Ruler(Generic[RuleFuncTv]):
         :param options: new rule options (not mandatory).
 
         """
-        self.__rules__.append(
-            Rule[RuleFuncTv](ruleName, True, fn, (options or {}).get("alt", []))
-        )
+        self.__rules__.append(Rule(ruleName, True, fn, (options or {}).get("alt", [])))
         self.__cache__ = None
 
     def enable(
@@ -264,7 +257,7 @@ class Ruler(Generic[RuleFuncTv]):
         """
         if self.__cache__ is None:
             self.__compile__()
-            assert self.__cache__ is not None
+            assert isinstance(self.__cache__, dict)
         # Chain can be empty, if rules disabled. But we still have to return Array.
         return self.__cache__.get(chainName, []) or []
 

@@ -3,21 +3,12 @@ Parse link destination
 """
 
 from ..common.utils import charCodeAt, unescapeAll
+from ._types import ParseResult
 
 
-class _Result:
-    __slots__ = ("lines", "ok", "pos", "str")
-
-    def __init__(self) -> None:
-        self.ok = False
-        self.pos = 0
-        self.lines = 0
-        self.str = ""
-
-
-def parseLinkDestination(string: str, start: int, maximum: int) -> _Result:
+def parseLinkDestination(string: str, start: int, maximum: int) -> ParseResult:
     pos = start
-    result = _Result()
+    result = ParseResult()
 
     if charCodeAt(string, pos) == 0x3C:  # /* < */
         pos += 1

@@ -111,7 +111,7 @@ def replace_rare(inlineTokens: list[Token]) -> None:
 
 
 def replace(state: StateCore) -> None:
-    if not state.md.options.typographer:
+    if not state.md.options["typographer"]:
         return
 
     for token in state.tokens:

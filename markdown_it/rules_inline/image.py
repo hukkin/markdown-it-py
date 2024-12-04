@@ -1,6 +1,8 @@
 # Process ![image](<src> "title")
 from __future__ import annotations
 
+from markdown_it import helpers
+
 from ..common.utils import isStrSpace, normalizeReference
 from ..token import Token
 from .state_inline import StateInline
@@ -19,7 +21,7 @@ def image(state: StateInline, silent: bool) -> bool:
         return False
 
     labelStart = state.pos + 2
-    labelEnd = state.md.helpers.parseLinkLabel(state, state.pos + 1, False)
+    labelEnd = helpers.parseLinkLabel(state, state.pos + 1, False)
 
     # parser failed to find ']', so it's not a valid link
     if labelEnd < 0:
@@ -47,7 +49,7 @@ def image(state: StateInline, silent: bool) -> bool:
         # [link](  <href>  "title"  )
         #          ^^^^^^ parsing link destination
         start = pos
-        res = state.md.helpers.parseLinkDestination(state.src, pos, state.posMax)
+        res = helpers.parseLinkDestination(state.src, pos, state.posMax)
         if res.ok:
             href = state.md.normalizeLink(res.str)
             if state.md.validateLink(href):
@@ -66,7 +68,7 @@ def image(state: StateInline, silent: bool) -> bool:
 
         # [link](  <href>  "title"  )
         #                  ^^^^^^^ parsing link title
-        res = state.md.helpers.parseLinkTitle(state.src, pos, state.posMax)
+        res = helpers.parseLinkTitle(state.src, pos, state.posMax)
         if pos < max and start != pos and res.ok:
             title = res.str
             pos = res.pos
@@ -97,7 +99,7 @@ def image(state: StateInline, silent: bool) -> bool:
         # /* [ */
         if pos < max and state.src[pos] == "[":
             start = pos + 1
-            pos = state.md.helpers.parseLinkLabel(state, pos)
+            pos = helpers.parseLinkLabel(state, pos)
             if pos >= 0:
                 label = state.src[start:pos]
                 pos += 1

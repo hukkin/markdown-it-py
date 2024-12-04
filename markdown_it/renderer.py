@@ -9,23 +9,27 @@ rules if you create plugin and adds new token types.
 from __future__ import annotations
 
 from collections.abc import Sequence
-import inspect
-from typing import Any, ClassVar, Protocol
+from typing import Any, Callable, ClassVar, Protocol
 
 from .common.utils import escapeHtml, unescapeAll
 from .token import Token
-from .utils import EnvType, OptionsDict
+from .utils import EnvType, OptionsType
 
 
 class RendererProtocol(Protocol):
-    __output__: ClassVar[str]
-
     def render(
-        self, tokens: Sequence[Token], options: OptionsDict, env: EnvType
+        self, tokens: Sequence[Token], options: OptionsType, env: EnvType
     ) -> Any: ...
 
 
-class RendererHTML(RendererProtocol):
+class ExtendableRenderer(RendererProtocol):
+    __output__: ClassVar[str]
+    rules: dict[
+        str, Callable[[RendererHTML, Sequence[Token], int, OptionsType, EnvType], str]
+    ]
+
+
+class RendererHTML(ExtendableRenderer):
     """Contains render rules for tokens. Can be updated and extended.
 
     Example:
@@ -58,14 +62,10 @@ class RendererHTML(RendererProtocol):
     __output__ = "html"
 
     def __init__(self, parser: Any = None):
-        self.rules = {
-            k: v
-            for k, v in inspect.getmembers(self, predicate=inspect.ismethod)
-            if not (k.startswith("render") or k.startswith("_"))
-        }
+        self.rules = default_rules.copy()
 
     def render(
-        self, tokens: Sequence[Token], options: OptionsDict, env: EnvType
+        self, tokens: Sequence[Token], options: OptionsType, env: EnvType
     ) -> str:
         """Takes token stream and generates HTML.
 
@@ -82,14 +82,14 @@ class RendererHTML(RendererProtocol):
                 if token.children:
                     result += self.renderInline(token.children, options, env)
             elif type in self.rules:
-                result += self.rules[type](tokens, i, options, env)
+                result += self.rules[type](self, tokens, i, options, env)
             else:
                 result += self.renderToken(tokens, i, options, env)
 
         return result
 
     def renderInline(
-        self, tokens: Sequence[Token], options: OptionsDict, env: EnvType
+        self, tokens: Sequence[Token], options: OptionsType, env: EnvType
     ) -> str:
         """The same as ``render``, but for single token of `inline` type.
 
@@ -101,7 +101,7 @@ class RendererHTML(RendererProtocol):
 
         for i, token in enumerate(tokens):
             if token.type in self.rules:
-                result += self.rules[token.type](tokens, i, options, env)
+                result += self.rules[token.type](self, tokens, i, options, env)
             else:
                 result += self.renderToken(tokens, i, options, env)
 
@@ -111,7 +111,7 @@ class RendererHTML(RendererProtocol):
         self,
         tokens: Sequence[Token],
         idx: int,
-        options: OptionsDict,
+        options: OptionsType,
         env: EnvType,
     ) -> str:
         """Default token renderer.
@@ -183,7 +183,7 @@ class RendererHTML(RendererProtocol):
     def renderInlineAsText(
         self,
         tokens: Sequence[Token] | None,
-        options: OptionsDict,
+        options: OptionsType,
         env: EnvType,
     ) -> str:
         """Special kludge for image `alt` attributes to conform CommonMark spec.
@@ -208,130 +208,168 @@ class RendererHTML(RendererProtocol):
 
         return result
 
-    ###################################################
 
-    def code_inline(
-        self, tokens: Sequence[Token], idx: int, options: OptionsDict, env: EnvType
-    ) -> str:
-        token = tokens[idx]
-        return (
-            "<code"
-            + self.renderAttrs(token)
-            + ">"
-            + escapeHtml(token.content)
-            + "</code>"
-        )
+def code_inline(
+    self: RendererHTML,
+    tokens: Sequence[Token],
+    idx: int,
+    options: OptionsType,
+    env: EnvType,
+) -> str:
+    token = tokens[idx]
+    return (
+        "<code" + self.renderAttrs(token) + ">" + escapeHtml(token.content) + "</code>"
+    )
 
-    def code_block(
-        self,
-        tokens: Sequence[Token],
-        idx: int,
-        options: OptionsDict,
-        env: EnvType,
-    ) -> str:
-        token = tokens[idx]
 
-        return (
-            "<pre"
-            + self.renderAttrs(token)
-            + "><code>"
-            + escapeHtml(tokens[idx].content)
-            + "</code></pre>\n"
-        )
+def code_block(
+    self: RendererHTML,
+    tokens: Sequence[Token],
+    idx: int,
+    options: OptionsType,
+    env: EnvType,
+) -> str:
+    token = tokens[idx]
 
-    def fence(
-        self,
-        tokens: Sequence[Token],
-        idx: int,
-        options: OptionsDict,
-        env: EnvType,
-    ) -> str:
-        token = tokens[idx]
-        info = unescapeAll(token.info).strip() if token.info else ""
-        langName = ""
-        langAttrs = ""
+    return (
+        "<pre"
+        + self.renderAttrs(token)
+        + "><code>"
+        + escapeHtml(tokens[idx].content)
+        + "</code></pre>\n"
+    )
 
-        if info:
-            arr = info.split(maxsplit=1)
-            langName = arr[0]
-            if len(arr) == 2:
-                langAttrs = arr[1]
 
-        if options.highlight:
-            highlighted = options.highlight(
-                token.content, langName, langAttrs
-            ) or escapeHtml(token.content)
-        else:
-            highlighted = escapeHtml(token.content)
+def fence(
+    self: RendererHTML,
+    tokens: Sequence[Token],
+    idx: int,
+    options: OptionsType,
+    env: EnvType,
+) -> str:
+    token = tokens[idx]
+    info = unescapeAll(token.info).strip() if token.info else ""
+    langName = ""
+    langAttrs = ""
 
-        if highlighted.startswith("<pre"):
-            return highlighted + "\n"
+    if info:
+        arr = info.split(maxsplit=1)
+        langName = arr[0]
+        if len(arr) == 2:
+            langAttrs = arr[1]
 
-        # If language exists, inject class gently, without modifying original token.
-        # May be, one day we will add .deepClone() for token and simplify this part, but
-        # now we prefer to keep things local.
-        if info:
-            # Fake token just to render attributes
-            tmpToken = Token(type="", tag="", nesting=0, attrs=token.attrs.copy())
-            tmpToken.attrJoin("class", options.langPrefix + langName)
+    if options["highlight"]:
+        highlighted = options["highlight"](
+            token.content, langName, langAttrs
+        ) or escapeHtml(token.content)
+    else:
+        highlighted = escapeHtml(token.content)
 
-            return (
-                "<pre><code"
-                + self.renderAttrs(tmpToken)
-                + ">"
-                + highlighted
-                + "</code></pre>\n"
-            )
+    if highlighted.startswith("<pre"):
+        return highlighted + "\n"
+
+    # If language exists, inject class gently, without modifying original token.
+    # May be, one day we will add .deepClone() for token and simplify this part, but
+    # now we prefer to keep things local.
+    if info:
+        # Fake token just to render attributes
+        tmpToken = Token(type="", tag="", nesting=0, attrs=token.attrs.copy())
+        tmpToken.attrJoin("class", options["langPrefix"] + langName)
 
         return (
             "<pre><code"
-            + self.renderAttrs(token)
+            + self.renderAttrs(tmpToken)
             + ">"
             + highlighted
             + "</code></pre>\n"
         )
 
-    def image(
-        self,
-        tokens: Sequence[Token],
-        idx: int,
-        options: OptionsDict,
-        env: EnvType,
-    ) -> str:
-        token = tokens[idx]
+    return (
+        "<pre><code" + self.renderAttrs(token) + ">" + highlighted + "</code></pre>\n"
+    )
 
-        # "alt" attr MUST be set, even if empty. Because it's mandatory and
-        # should be placed on proper position for tests.
-        if token.children:
-            token.attrSet("alt", self.renderInlineAsText(token.children, options, env))
-        else:
-            token.attrSet("alt", "")
 
-        return self.renderToken(tokens, idx, options, env)
+def image(
+    self: RendererHTML,
+    tokens: Sequence[Token],
+    idx: int,
+    options: OptionsType,
+    env: EnvType,
+) -> str:
+    token = tokens[idx]
 
-    def hardbreak(
-        self, tokens: Sequence[Token], idx: int, options: OptionsDict, env: EnvType
-    ) -> str:
-        return "<br />\n" if options.xhtmlOut else "<br>\n"
+    # "alt" attr MUST be set, even if empty. Because it's mandatory and
+    # should be placed on proper position for tests.
+    if token.children:
+        token.attrSet("alt", self.renderInlineAsText(token.children, options, env))
+    else:
+        token.attrSet("alt", "")
 
-    def softbreak(
-        self, tokens: Sequence[Token], idx: int, options: OptionsDict, env: EnvType
-    ) -> str:
-        return (
-            ("<br />\n" if options.xhtmlOut else "<br>\n") if options.breaks else "\n"
-        )
+    return self.renderToken(tokens, idx, options, env)
 
-    def text(
-        self, tokens: Sequence[Token], idx: int, options: OptionsDict, env: EnvType
-    ) -> str:
-        return escapeHtml(tokens[idx].content)
 
-    def html_block(
-        self, tokens: Sequence[Token], idx: int, options: OptionsDict, env: EnvType
-    ) -> str:
-        return tokens[idx].content
+def hardbreak(
+    self: RendererHTML,
+    tokens: Sequence[Token],
+    idx: int,
+    options: OptionsType,
+    env: EnvType,
+) -> str:
+    return "<br />\n" if options["xhtmlOut"] else "<br>\n"
 
-    def html_inline(
-        self, tokens: Sequence[Token], idx: int, options: OptionsDict, env: EnvType
-    ) -> str:
-        return tokens[idx].content
+
+def softbreak(
+    self: RendererHTML,
+    tokens: Sequence[Token],
+    idx: int,
+    options: OptionsType,
+    env: EnvType,
+) -> str:
+    return (
+        ("<br />\n" if options["xhtmlOut"] else "<br>\n") if options["breaks"] else "\n"
+    )
+
+
+def text(
+    self: RendererHTML,
+    tokens: Sequence[Token],
+    idx: int,
+    options: OptionsType,
+    env: EnvType,
+) -> str:
+    return escapeHtml(tokens[idx].content)
+
+
+def html_block(
+    self: RendererHTML,
+    tokens: Sequence[Token],
+    idx: int,
+    options: OptionsType,
+    env: EnvType,
+) -> str:
+    return tokens[idx].content
+
+
+def html_inline(
+    self: RendererHTML,
+    tokens: Sequence[Token],
+    idx: int,
+    options: OptionsType,
+    env: EnvType,
+) -> str:
+    return tokens[idx].content
+
+
+default_rules: dict[
+    str, Callable[[RendererHTML, Sequence[Token], int, OptionsType, EnvType], str]
+] = {
+    "code_inline": code_inline,
+    "code_block": code_block,
+    "fence": fence,
+    "image": image,
+    "hardbreak": hardbreak,
+    "softbreak": softbreak,
+    "text": text,
+    "html_block": html_block,
+    "html_inline": html_inline,
+}

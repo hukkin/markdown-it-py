@@ -10,7 +10,7 @@ SCHEME_RE = re.compile(r"(?:^|[^a-z0-9.+-])([a-z][a-z0-9.+-]*)$", re.IGNORECASE)
 
 def linkify(state: StateInline, silent: bool) -> bool:
     """Rule for identifying plain-text links."""
-    if not state.md.options.linkify:
+    if not state.md.options["linkify"]:
         return False
     if state.linkLevel > 0:
         return False

@@ -146,11 +146,11 @@ def process_inlines(tokens: list[Token], state: StateCore) -> None:
                         item = stack[j]
 
                         if isSingle:
-                            openQuote = state.md.options.quotes[2]
-                            closeQuote = state.md.options.quotes[3]
+                            openQuote = state.md.options["quotes"][2]
+                            closeQuote = state.md.options["quotes"][3]
                         else:
-                            openQuote = state.md.options.quotes[0]
-                            closeQuote = state.md.options.quotes[1]
+                            openQuote = state.md.options["quotes"][0]
+                            closeQuote = state.md.options["quotes"][1]
 
                         # replace token.content *before* tokens[item.token].content,
                         # because, if they are pointing at the same token, replaceAt
@@ -192,7 +192,7 @@ def process_inlines(tokens: list[Token], state: StateCore) -> None:
 
 
 def smartquotes(state: StateCore) -> None:
-    if not state.md.options.typographer:
+    if not state.md.options["typographer"]:
         return
 
     for token in state.tokens:

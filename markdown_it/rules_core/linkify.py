@@ -14,7 +14,7 @@ TEST_MAILTO_RE = re.compile(r"^mailto:", flags=re.IGNORECASE)
 
 def linkify(state: StateCore) -> None:
     """Rule for identifying plain-text links."""
-    if not state.md.options.linkify:
+    if not state.md.options["linkify"]:
         return
 
     if not state.md.linkify:

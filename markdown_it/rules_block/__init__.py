@@ -13,15 +13,15 @@ __all__ = (
     "table",
 )
 
-from .blockquote import blockquote
-from .code import code
-from .fence import fence
-from .heading import heading
-from .hr import hr
-from .html_block import html_block
-from .lheading import lheading
-from .list import list_block
-from .paragraph import paragraph
-from .reference import reference
-from .state_block import StateBlock
-from .table import table
+from markdown_it.rules_block.blockquote import blockquote
+from markdown_it.rules_block.code import code
+from markdown_it.rules_block.fence import fence
+from markdown_it.rules_block.heading import heading
+from markdown_it.rules_block.hr import hr
+from markdown_it.rules_block.html_block import html_block
+from markdown_it.rules_block.lheading import lheading
+from markdown_it.rules_block.list import list_block
+from markdown_it.rules_block.paragraph import paragraph
+from markdown_it.rules_block.reference import reference
+from markdown_it.rules_block.state_block import StateBlock
+from markdown_it.rules_block.table import table

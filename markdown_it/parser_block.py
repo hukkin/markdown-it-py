@@ -52,7 +52,7 @@ class ParserBlock:
     """
 
     def __init__(self) -> None:
-        self.ruler = Ruler[RuleFuncBlockType]()
+        self.ruler = Ruler()
         for name, rule, alt in _rules:
             self.ruler.push(name, rule, {"alt": alt})
 
@@ -61,7 +61,7 @@ class ParserBlock:
         ok = False
         rules = self.ruler.getRules("")
         line = startLine
-        maxNesting = state.md.options.maxNesting
+        maxNesting = state.md.options["maxNesting"]
         hasEmptyLines = False
 
         while line < endLine:

@@ -15,17 +15,17 @@ __all__ = (
     "strikethrough",
     "text",
 )
-from . import emphasis, strikethrough
-from .autolink import autolink
-from .backticks import backtick
-from .balance_pairs import link_pairs
-from .entity import entity
-from .escape import escape
-from .fragments_join import fragments_join
-from .html_inline import html_inline
-from .image import image
-from .link import link
-from .linkify import linkify
-from .newline import newline
-from .state_inline import StateInline
-from .text import text
+from markdown_it.rules_inline import emphasis, strikethrough
+from markdown_it.rules_inline.autolink import autolink
+from markdown_it.rules_inline.backticks import backtick
+from markdown_it.rules_inline.balance_pairs import link_pairs
+from markdown_it.rules_inline.entity import entity
+from markdown_it.rules_inline.escape import escape
+from markdown_it.rules_inline.fragments_join import fragments_join
+from markdown_it.rules_inline.html_inline import html_inline
+from markdown_it.rules_inline.image import image
+from markdown_it.rules_inline.link import link
+from markdown_it.rules_inline.linkify import linkify
+from markdown_it.rules_inline.newline import newline
+from markdown_it.rules_inline.state_inline import StateInline
+from markdown_it.rules_inline.text import text
