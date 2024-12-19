@@ -4,9 +4,9 @@ Overwrites pyproject.toml. Does not create a backup.
 """
 
 from pathlib import Path
-import tomllib
 
 import tomli_w  # type: ignore[import-not-found]
+import tomllib
 
 
 def use_setuptools() -> None:

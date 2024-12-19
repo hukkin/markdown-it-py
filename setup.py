@@ -1,11 +1,12 @@
 import os
 
-from setuptools import setup  # type: ignore[import-untyped]
+from setuptools import setup
 
-if True:  # TODO: tox's pass_env is not working for unknown reason
-# if os.environ.get("MARKDOWNIT_USE_MYPYC") == "1":
+if os.environ.get("MARKDOWNIT_USE_MYPYC") == "1":
     import glob
-    from mypyc.build import mypycify  # type: ignore[import-untyped]
+
+    from mypyc.build import mypycify
+
     files = glob.glob("markdown_it/**/*.py", recursive=True)
     ext_modules = mypycify(files)
 else:
